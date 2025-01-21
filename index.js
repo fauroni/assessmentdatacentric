@@ -10,13 +10,9 @@ app.use(express.json())
 // !! Enable CORS
 app.use(cors());
 
-
+const { ObjectId } = require('mongodb');
 const MongoClient = require("mongodb").MongoClient;
 const mongoUri = process.env.MONGO_URI;
-
-if (!mongoUri) {
-    throw new Error("MongoDB URI is not defined. Check your environment variables.");
-}
 const dbname = "recipes"; // CHANGE THIS TO YOUR ACTUAL DATABASE NAME
 
 async function connect(uri, dbname) {
@@ -34,6 +30,7 @@ async function main() {
             message: "Hello World!",
         });
     });
+
     app.get("/recipes", async function (req, res) {
         try {
             const recipes = await db.collection("recipes").find().project({
@@ -49,39 +46,30 @@ async function main() {
             res.status(500).json({ error: "Internal server error" });
         }
 
-
     });
 
-    app.get("/recipes", async (req, res) => {
+    app.get("/recipes/:id", async (req, res) => {
         try {
-            const recipes = await db.collection("recipes").find().project({
-                name: 1,
-                cuisine: 1,
-                tags: 1,
-                prepTime: 1,
-            }).toArray();
-            res.json({ recipes });
+            const id = req.params.id;
 
+            // First, fetch the recipe
+            const recipe = await db.collection("recipes").findOne(
+                { _id: new ObjectId(id) },
+                { projection: { _id: 0 } }
+            )
+            if (!recipe) {
+                return res.status(404).json({ error: "Recipe not found" });
+            }
+            res.json(recipe);
         } catch (error) {
-            console.error("Error fetching recipes:", error);
+            console.error("Error fetching recipe:", error);
             res.status(500).json({ error: "Internal server error" });
         }
     });
 
-
-
 }
 main();
 
-
-
-
-// 2. CREATE ROUTES
-app.get('/', function (req, res) {
-    res.json({
-        "message": "Hello World!"
-    });
-})
 
 // 3. START SERVER (Don't put any routes after this line)
 app.listen(3000, function () {
